@@ -4,6 +4,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.businessassistantbcn.opendata.dto.ActivityInfoDto;
 import com.businessassistantbcn.opendata.dto.largeestablishments.LargeEstablishmentsDto;
@@ -36,6 +38,8 @@ public class BigMallsService {
 	private HttpProxy httpProxy;
 	@Autowired
 	private GenericResultDto<BigMallsDto> genericResultDto;
+	@Autowired
+	private GenericResultDto<ActivityInfoDto> genericActivityResultDto;
 	@Autowired
 	private CircuitBreakerFactory circuitBreakerFactory;
 
@@ -78,14 +82,15 @@ public class BigMallsService {
 			url = new URL(config.getDs_bigmalls());
 		} catch (MalformedURLException e) {
 			log.error("URL bad configured: " + e.getMessage());
-			return Mono.just(new GenericResultDto<ActivityInfoDto>(0, 0, 0, new ActivityInfoDto[0]));
+			genericActivityResultDto.setInfo(0, 0, 0, new ActivityInfoDto[0]);
+			return Mono.just(genericActivityResultDto);
 		}
 
 		Mono<BigMallsDto[]> response = httpProxy.getRequestData(url, BigMallsDto[].class);
 		CircuitBreaker circuitBreaker = circuitBreakerFactory.create("circuitBreaker");
 
 		return circuitBreaker.run( () -> response.flatMap(bigMallsDto -> {
-			ActivityInfoDto[] arrActivityInfoDto =
+			ActivityInfoDto[] activityInfoDto =
 				Arrays.stream(bigMallsDto)
 					.flatMap(bigMallDto -> bigMallDto.getClassifications_data().stream())
 					.filter(classificationsDataDto ->
@@ -99,17 +104,18 @@ public class BigMallsService {
 					.map(classificationsDataDto -> {
 						return new ActivityInfoDto(
 							classificationsDataDto.getId(),
-							((classificationsDataDto.getName()!=null) ? classificationsDataDto.getName() : "")
+							((classificationsDataDto.getName() == null) ? "" : classificationsDataDto.getName())
 						);
 					})
 					.sorted(Comparator.comparing(ActivityInfoDto::getActivityName))
-					.distinct()
 					.toArray(ActivityInfoDto[]::new);
-
-			ActivityInfoDto[] pagedDto = JsonHelper.filterDto(arrActivityInfoDto, offset, limit);
-			return Mono.just(new GenericResultDto<ActivityInfoDto>(pagedDto.length, offset, limit, pagedDto));
-
-		}), throwable -> Mono.just(new GenericResultDto<ActivityInfoDto>(0, 0, 0, new ActivityInfoDto[0])));
+			ActivityInfoDto[] pagedDto = JsonHelper.filterDto(activityInfoDto, offset, limit);
+			genericActivityResultDto.setInfo(offset, limit, activityInfoDto.length, pagedDto);
+			return Mono.just(genericActivityResultDto);
+		}), throwable -> {
+			genericActivityResultDto.setInfo(0, 0, 0, new ActivityInfoDto[0]);
+			return Mono.just(genericActivityResultDto);
+		});
 	}
 
 	public GenericResultDto<BigMallsDto> getBigMallsByActivityDto(int[] activities, int offset, int limit) {
