@@ -2,9 +2,12 @@ package com.businessassistantbcn.opendata.service.externaldata;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Map;
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.businessassistantbcn.opendata.dto.ActivityInfoDto;
@@ -90,28 +93,38 @@ public class BigMallsService {
 		CircuitBreaker circuitBreaker = circuitBreakerFactory.create("circuitBreaker");
 
 		return circuitBreaker.run( () -> response.flatMap(bigMallsDto -> {
-			ActivityInfoDto[] activityInfoDto =
-				Arrays.stream(bigMallsDto)
-					.flatMap(bigMallDto -> bigMallDto.getClassifications_data().stream())
-					.filter(classificationsDataDto ->
-						(classificationsDataDto.getFullPath() == null) ||
+			List<ActivityInfoDto> listRepeatedNames = new ArrayList<>();
+			listRepeatedNames= Arrays.stream(bigMallsDto)
+				.flatMap(bigMallDto -> bigMallDto.getClassifications_data().stream())
+				.filter(classificationsDataDto ->
+					(classificationsDataDto.getFullPath() == null) ||
 						(
 							(!classificationsDataDto.getFullPath().toUpperCase().contains("MARQUES")) &&
 							(!classificationsDataDto.getFullPath().toUpperCase().contains("GESTIÓ BI")) &&
 							(!classificationsDataDto.getFullPath().toUpperCase().contains("ÚS INTERN"))
 						)
-					)
-					.map(classificationsDataDto -> {
-						return new ActivityInfoDto(
+				)
+				.map(classificationsDataDto -> {
+					return new ActivityInfoDto(
 							classificationsDataDto.getId(),
 							((classificationsDataDto.getName() == null) ? "" : classificationsDataDto.getName())
-						);
-					})
-					.sorted(Comparator.comparing(ActivityInfoDto::getActivityName))
-					.toArray(ActivityInfoDto[]::new);
+					);
+				})
+				.sorted(Comparator.comparing(ActivityInfoDto::getActivityName))
+				.collect(Collectors.toList());
+
+			List<ActivityInfoDto> listNotRepeatedNames = new ArrayList<>();
+			listNotRepeatedNames = (io.vavr.collection.List.ofAll(listRepeatedNames)
+				.distinctBy((s1, s2) -> s1.getActivityName().compareToIgnoreCase(s2.getActivityName()))
+				.toJavaList());
+
+			ActivityInfoDto[] activityInfoDto =
+				listNotRepeatedNames.toArray(new ActivityInfoDto[listNotRepeatedNames.size()]);
+
 			ActivityInfoDto[] pagedDto = JsonHelper.filterDto(activityInfoDto, offset, limit);
 			genericActivityResultDto.setInfo(offset, limit, activityInfoDto.length, pagedDto);
 			return Mono.just(genericActivityResultDto);
+
 		}), throwable -> {
 			genericActivityResultDto.setInfo(0, 0, 0, new ActivityInfoDto[0]);
 			return Mono.just(genericActivityResultDto);
