@@ -93,33 +93,31 @@ public class BigMallsService {
 		CircuitBreaker circuitBreaker = circuitBreakerFactory.create("circuitBreaker");
 
 		return circuitBreaker.run( () -> response.flatMap(bigMallsDto -> {
-			List<ActivityInfoDto> listRepeatedNames = new ArrayList<>();
-			listRepeatedNames= Arrays.stream(bigMallsDto)
-				.flatMap(bigMallDto -> bigMallDto.getClassifications_data().stream())
-				.filter(classificationsDataDto ->
-					(classificationsDataDto.getFullPath() == null) ||
-						(
-							(!classificationsDataDto.getFullPath().toUpperCase().contains("MARQUES")) &&
-							(!classificationsDataDto.getFullPath().toUpperCase().contains("GESTIÓ BI")) &&
-							(!classificationsDataDto.getFullPath().toUpperCase().contains("ÚS INTERN"))
-						)
-				)
-				.map(classificationsDataDto -> {
-					return new ActivityInfoDto(
-							classificationsDataDto.getId(),
-							((classificationsDataDto.getName() == null) ? "" : classificationsDataDto.getName())
-					);
-				})
-				.sorted(Comparator.comparing(ActivityInfoDto::getActivityName))
-				.collect(Collectors.toList());
-
-			List<ActivityInfoDto> listNotRepeatedNames = new ArrayList<>();
-			listNotRepeatedNames = (io.vavr.collection.List.ofAll(listRepeatedNames)
-				.distinctBy((s1, s2) -> s1.getActivityName().compareToIgnoreCase(s2.getActivityName()))
-				.toJavaList());
+			List<ActivityInfoDto> listactivityInfoDto = new ArrayList<>();
+			listactivityInfoDto = io.vavr.collection.List.ofAll(
+				Arrays.stream(bigMallsDto)
+					.flatMap(bigMallDto -> bigMallDto.getClassifications_data().stream())
+					.filter(classificationsDataDto ->
+						(classificationsDataDto.getFullPath() == null) ||
+							(
+								(!classificationsDataDto.getFullPath().toUpperCase().contains("MARQUES")) &&
+								(!classificationsDataDto.getFullPath().toUpperCase().contains("GESTIÓ BI")) &&
+								(!classificationsDataDto.getFullPath().toUpperCase().contains("ÚS INTERN"))
+							)
+					)
+					.map(classificationsDataDto -> {
+						return new ActivityInfoDto(
+								classificationsDataDto.getId(),
+								((classificationsDataDto.getName() == null) ? "" : classificationsDataDto.getName())
+						);
+					})
+					.sorted(Comparator.comparing(ActivityInfoDto::getActivityName))
+					.collect(Collectors.toList()))
+			.distinctBy((s1, s2) -> s1.getActivityName().compareToIgnoreCase(s2.getActivityName()))
+			.toJavaList();
 
 			ActivityInfoDto[] activityInfoDto =
-				listNotRepeatedNames.toArray(new ActivityInfoDto[listNotRepeatedNames.size()]);
+				listactivityInfoDto.toArray(new ActivityInfoDto[listactivityInfoDto.size()]);
 
 			ActivityInfoDto[] pagedDto = JsonHelper.filterDto(activityInfoDto, offset, limit);
 			genericActivityResultDto.setInfo(offset, limit, activityInfoDto.length, pagedDto);
