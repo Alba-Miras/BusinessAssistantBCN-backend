@@ -1,25 +1,77 @@
 package com.businessassistantbcn.opendata.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
 
 @Configuration
-@EnableConfigurationProperties
-@ConfigurationProperties("url")
+@PropertySource("classpath:application.yml")
 public class PropertiesConfig {
 
+    @Value("${url.connection_timeout}")
     private Integer connection_timeout;//millis
+    @Value("${url.ds_test}")
     private String ds_test;
+    @Value("${url.ds_largeestablishments}")
     private String ds_largeestablishments;
+    @Value("${url.ds_commercialgalleries}")
     private String ds_commercialgalleries;
+    @Value("${url.ds_bigmalls}")
     private String ds_bigmalls;
+    @Value("${url.ds_municipalmarkets}")
     private String ds_municipalmarkets;
+    @Value("${url.ds_marketfairs}")
     private String ds_marketfairs;
+    @Value("${url.ds_economicactivitiescensus}")
     private String ds_economicactivitiescensus;
+    @Value("${url.ds_economicactivitiesgroundfloor}")
     private String ds_economicactivitiesgroundfloor;
+    @Value("${url.maxBytesInMemory}")
     private Integer maxBytesInMemory;
+    //@Value("${url.districts}")
+    @Value("${url.districts:}")
     private String[] districts;
+
+    @Value("${security.datasource.secret}")
+    private String secret;
+    @Value("${security.datasource.headerString}")
+    private String headerString;
+    @Value("${security.datasource.authoritiesClaim}")
+    private String authoritiesClaim;
+    @Value("${security.datasource.err}")
+    private String err;
+
+    public String getSecret() {
+        return secret;
+    }
+
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
+
+    public String getHeaderString() {
+        return headerString;
+    }
+
+    public void setHeaderString(String headerString) {
+        this.headerString = headerString;
+    }
+
+    public String getAuthoritiesClaim() {
+        return authoritiesClaim;
+    }
+
+    public void setAuthoritiesClaim(String authoritiesClaim) {
+        this.authoritiesClaim = authoritiesClaim;
+    }
+
+    public String getErr() {
+        return err;
+    }
+
+    public void setErr(String err) {
+        this.err = err;
+    }
 
     public int getMaxBytesInMemory() {
         return maxBytesInMemory;
